@@ -1,0 +1,9 @@
+---
+
+- name: System
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: Set up ArchLinux ARM
+      ansible.builtin.include_role:
+        name: alarm

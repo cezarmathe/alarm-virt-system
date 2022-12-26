@@ -1,0 +1,96 @@
+---
+
+- name: Install packages
+  become: true
+  community.general.pacman:
+    name: "{{ alarm_packages }}"
+    state: present
+
+- name: Install yay-bin
+  become: true
+  kewlfft.aur.aur:
+    name: yay-bin
+    state: present
+    use: makepkg
+
+- name: Install AUR packages
+  become: true
+  kewlfft.aur.aur:
+    name: "{{ alarm_aur_packages }}"
+    state: present
+    use: yay
+
+- name: Check if there is free space on the root drive
+  become: true
+  ansible.builtin.shell: |
+    parted /dev/vda unit GB print free | grep "Free Space" | awk '{print $3}'
+  register: alarm_root_drive_free_space
+  changed_when: alarm_root_drive_free_space.stdout != "0.00GB"
+
+- name: Extend root partition
+  become: true
+  ansible.builtin.command: growpart /dev/vda 2
+  when: alarm_root_drive_free_space.stdout != "0.00GB"
+
+- name: Configure sudo
+  become: true
+  community.general.sudoers:
+    commands: ALL
+    group: wheel
+    name: wheel
+    nopassword: false
+
+- name: Generate locale
+  become: true
+  community.general.locale_gen:
+    name: "{{ alarm_locale }}"
+    state: present
+
+- name: Configure /etc/locale.conf
+  become: true
+  ansible.builtin.template:
+    src: templates/etc/locale.conf.j2
+    dest: /etc/locale.conf
+
+- name: Configure hostname
+  become: true
+  ansible.builtin.hostname:
+    name: "{{ alarm_hostname }}"
+    use: systemd
+
+- name: Configure timezone
+  become: true
+  community.general.timezone:
+    name: "{{ alarm_timezone }}"
+
+- name: Delete default alarm user
+  become: true
+  ansible.builtin.user:
+    name: alarm
+    remove: true
+    state: absent
+  when: alarm_nonroot_user != "alarm"
+
+- name: Add a new, non-root user
+  become: true
+  ansible.builtin.user:
+    group: "{{ alarm_nonroot_user }}"
+    groups: wheel
+    home: /home/{{ alarm_nonroot_user }}
+    name: "{{ alarm_nonroot_user }}"
+    uid: "{{ alarm_nonroot_user_uid }}"
+  when: alarm_nonroot_user != "alarm"
+
+- name: Enable SSH service
+  become: true
+  ansible.builtin.systemd:
+    enabled: true
+    name: sshd
+
+- name: Enable color output for pacman
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/pacman.conf
+    regexp: ^#Color
+    line: Color
+  when: alarm_pacman_color

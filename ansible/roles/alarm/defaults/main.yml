@@ -1,0 +1,22 @@
+---
+
+alarm_packages:
+  - base-devel
+  - git
+  - parted
+  - qemu-guest-agent
+  - sudo
+
+alarm_aur_packages:
+  - growpartfs
+
+alarm_nonroot_user: cezar
+alarm_nonroot_user_uid: 1000
+
+alarm_timezone: Europe/Bucharest
+
+alarm_hostname: alarm-virt
+
+alarm_locale: en_US.UTF-8
+
+alarm_pacman_color: true
